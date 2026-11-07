@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Trace HK (greentrace.hk) - Desire Path & Walkability Mapping Platform</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            900: '#112a1f',
+                            800: '#1b4332',
+                            700: '#2d6a4f',
+                            600: '#40916c',
+                            500: '#52b788',
+                            400: '#74c69d',
+                            300: '#95d5b2',
+                            200: '#b7e4c7',
+                            100: '#d8f3dc',
+                            50: '#f0fdf4',
+                        },
+                        earth: {
+                            amber: '#e9c46a',
+                            ochre: '#f4a261',
+                            terracotta: '#e76f51',
+                            charcoal: '#264653',
+                            sand: '#f8f9fa'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Leaflet.js CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Map & Scrollbar Styles */
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 520px;
+            z-index: 10;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.75rem;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .leaflet-popup-content {
+            margin: 0;
+            width: 300px !important;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2d6a4f;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1b4332;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased flex flex-col min-h-screen">
+
+    <!-- TOP ANNOUNCEMENT BANNER -->
+    <div class="bg-brand-900 text-brand-100 px-4 py-2 text-xs md:text-sm font-medium flex items-center justify-between border-b border-brand-800">
+        <div class="flex items-center space-x-2 container mx-auto">
+            <span class="bg-brand-600 text-white text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded">Official Pilot</span>
+            <span>greentrace.hk — Empowering Hong Kong citizens to bridge urban planning gaps through tactical ecology.</span>
+        </div>
+        <div class="hidden md:flex items-center space-x-4 text-xs">
+            <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-brand-400"></i> NGO Registration: 91/18420</span>
+        </div>
+    </div>
+
+    <!-- MAIN NAVIGATION -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div class="container mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <a href="#" class="flex items-center space-x-3 group">
+                <div class="w-10 h-10 rounded-xl bg-brand-800 flex items-center justify-center text-brand-100 shadow-md group-hover:bg-brand-700 transition">
+                    <i data-lucide="footprints" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-extrabold text-xl tracking-tight text-brand-900">Green Trace</span>
+                        <span class="text-xs font-mono font-bold px-1.5 py-0.5 bg-brand-100 text-brand-800 rounded">HK</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 font-medium tracking-wide uppercase">香港捷徑與行人路權關注組</p>
+                </div>
+            </a>
+
+            <!-- Desktop Nav Links -->
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-semibold text-gray-700">
+                <a href="#about" class="hover:text-brand-700 transition flex items-center gap-1.5"><i data-lucide="compass" class="w-4 h-4"></i> About Project</a>
+                <a href="#map-section" class="hover:text-brand-700 transition flex items-center gap-1.5"><i data-lucide="map-pin" class="w-4 h-4"></i> Desire Path Map</a>
+                <a href="#stakeholders" class="hover:text-brand-700 transition flex items-center gap-1.5"><i data-lucide="building-2" class="w-4 h-4"></i> Dept Response Hub</a>
+                <a href="#blog" class="hover:text-brand-700 transition flex items-center gap-1.5"><i data-lucide="book-open" class="w-4 h-4"></i> Urban Ecology</a>
+            </nav>
+
+            <!-- Actions -->
+            <div class="flex items-center space-x-3">
+                <button onclick="openReportModal()" class="bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Report a Shortcut</span>
+                </button>
+                
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" class="md:hidden p-2 text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobileMenu" class="hidden md:hidden bg-white border-b border-gray-200 px-4 pt-2 pb-4 space-y-3 text-sm font-semibold text-gray-700">
+            <a href="#about" class="block py-2 hover:text-brand-700">About Project</a>
+            <a href="#map-section" class="block py-2 hover:text-brand-700">Desire Path Map</a>
+            <a href="#stakeholders" class="block py-2 hover:text-brand-700">Dept Response Hub</a>
+            <a href="#blog" class="block py-2 hover:text-brand-700">Urban Ecology</a>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="relative bg-gradient-to-b from-brand-900 via-brand-800 to-brand-900 text-white pt-16 pb-20 overflow-hidden">
+        <!-- Background Grid Graphic -->
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        
+        <div class="container mx-auto px-4 lg:px-8 relative z-10">
+            <div class="max-w-3xl mx-auto text-center space-y-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-brand-200 text-xs font-mono uppercase tracking-wider backdrop-blur-sm border border-white/10">
+                    <i data-lucide="trees" class="w-3.5 h-3.5"></i> Tactical Urbanism & Civic Engagement
+                </div>
+                
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight text-white">
+                    Where Citizens Walk, <br class="hidden sm:inline">
+                    <span class="text-brand-300 underline decoration-earth-amber decoration-4 underline-offset-8">Desire Paths</span> Reveal Real Needs.
+                </h1>
+
+                <p class="text-base md:text-lg text-brand-100 font-normal leading-relaxed">
+                    Ever noticed informal dirt tracks carved into grass slopes or broken fences near MTR exits? These citizen shortcuts ("desire paths") highlight flawed urban design, safety risks, and soil erosion. <strong>Green Trace HK</strong> connects citizen mapping directly with HK Government departments to construct safe, paved walkways or protect green spaces.
+                </p>
+
+                <div class="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <a href="#map-section" class="w-full sm:w-auto bg-earth-amber hover:bg-yellow-500 text-brand-900 font-bold px-6 py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="map" class="w-5 h-5"></i> Explore Map Database
+                    </a>
+                    <button onclick="openReportModal()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5 rounded-xl border border-white/20 backdrop-blur-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="camera" class="w-5 h-5"></i> Submit New Shortcut Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- IMPACT STATS METRICS -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-14 max-w-4xl mx-auto">
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
+                    <div class="text-2xl md:text-3xl font-extrabold text-brand-300 font-mono">142</div>
+                    <div class="text-xs text-brand-100 font-medium mt-1">Informal Paths Mapped</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
+                    <div class="text-2xl md:text-3xl font-extrabold text-earth-amber font-mono">68%</div>
+                    <div class="text-xs text-brand-100 font-medium mt-1">Erosion / Safety Risk</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
+                    <div class="text-2xl md:text-3xl font-extrabold text-brand-300 font-mono">39</div>
+                    <div class="text-xs text-brand-100 font-medium mt-1">Govt Action Notices Sent</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
+                    <div class="text-2xl md:text-3xl font-extrabold text-emerald-400 font-mono">18</div>
+                    <div class="text-xs text-brand-100 font-medium mt-1">Formalized / Paved Trails</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- INTERACTIVE MAP SECTION -->
+    <section id="map-section" class="py-12 bg-gray-100 flex-grow">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between mb-6 gap-4">
+                <div>
+                    <div class="flex items-center gap-2 text-brand-700 font-bold text-sm uppercase tracking-wider">
+                        <i data-lucide="layers" class="w-4 h-4"></i> Live Spatial Database
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mt-1">Hong Kong Desire Path Explorer</h2>
+                    <p class="text-sm text-gray-600">Click on any marker to inspect photos, soil erosion rating, responsible HK department, and action status.</p>
+                </div>
+
+                <!-- Map Filter Controls -->
+                <div class="bg-white p-2.5 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center gap-3 text-xs font-semibold">
+                    <span class="text-gray-500 pl-1"><i data-lucide="filter" class="w-3.5 h-3.5 inline mr-1"></i> Filter:</span>
+                    
+                    <select id="statusFilter" onchange="filterMapMarkers()" class="bg-gray-50 border border-gray-300 text-gray-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="ALL">All Statuses</option>
+                        <option value="CRITICAL">🔴 Safety / Erosion Hazard</option>
+                        <option value="REVIEW">🟡 Under Civic Review</option>
+                        <option value="RESOLVED">🟢 Formalized / Safe Paved</option>
+                    </select>
+
+                    <select id="deptFilter" onchange="filterMapMarkers()" class="bg-gray-50 border border-gray-300 text-gray-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="ALL">All HK Depts</option>
+                        <option value="HyD">Highways Department (HyD)</option>
+                        <option value="LCSD">Leisure & Cultural Services (LCSD)</option>
+                        <option value="HKHA">Housing Authority (HKHA)</option>
+                        <option value="PlanD">Planning Department (PlanD)</option>
+                    </select>
+
+                    <button onclick="resetMapFilters()" class="text-brand-700 hover:underline px-2 py-1">Reset</button>
+                </div>
+            </div>
+
+            <!-- MAP CONTAINER CARD -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 grid grid-cols-1 lg:grid-cols-4">
+                <!-- Map Left Sidebar / Recent Submissions -->
+                <div class="lg:col-span-1 p-4 border-r border-gray-200 bg-gray-50 flex flex-col h-[520px]">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                            <i data-lucide="list" class="w-4 h-4 text-brand-700"></i> Localized Path Records
+                        </h3>
+                        <span class="text-[10px] bg-brand-100 text-brand-800 font-mono font-bold px-2 py-0.5 rounded-full" id="visibleCount">3 Records</span>
+                    </div>
+
+                    <div id="pathList" class="space-y-3 overflow-y-auto flex-1 pr-1">
+                        <!-- Dynamic Sidebar Item Cards Inserted by JS -->
+                    </div>
+                </div>
+
+                <!-- Leaflet Interactive Canvas -->
+                <div class="lg:col-span-3 relative h-[520px]">
+                    <div id="map"></div>
+                    
+                    <!-- Floating Map Legend -->
+                    <div class="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-gray-200 text-xs z-[400] space-y-1.5">
+                        <div class="font-bold text-gray-800 mb-1 border-b pb-1">Path Status Legend</div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                            <span class="text-gray-700">High Soil Erosion / Safety Concern</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                            <span class="text-gray-700">Pending Civic Review / Assessment</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                            <span class="text-gray-700">Formalized / Paved by Dept</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- STAKEHOLDER & GOVERNMENT ACTION HUB -->
+    <section id="stakeholders" class="py-16 bg-white border-t border-gray-200">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="max-w-3xl mb-12">
+                <div class="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-200 mb-2">
+                    <i data-lucide="landmark" class="w-3.5 h-3.5"></i> Departmental Accountability
+                </div>
+                <h2 class="text-2xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Public Stakeholders Action Portal</h2>
+                <p class="text-gray-600 mt-2">
+                    We bridge the communication gap between pedestrian habits and municipal authorities. Instead of issuing fines or erecting ineffective fences, we urge government departments to listen to spatial citizen data.
+                </p>
+            </div>
+
+            <!-- DEPARTMENTS GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- HyD -->
+                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-extrabold font-mono text-sm mb-4">
+                        HyD
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-lg">Highways Department</h3>
+                    <p class="text-xs text-gray-500 mt-1">路政署</p>
+                    <div class="mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs text-gray-600">
+                        <div class="flex justify-between"><span>Reports Forwarded:</span> <strong class="text-gray-900">54</strong></div>
+                        <div class="flex justify-between"><span>Constructed Steps/Pavement:</span> <strong class="text-emerald-700">12 sites</strong></div>
+                        <div class="flex justify-between"><span>Response Rate:</span> <strong class="text-blue-600">74%</strong></div>
+                    </div>
+                </div>
+
+                <!-- LCSD -->
+                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold font-mono text-sm mb-4">
+                        LCSD
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-lg">Leisure & Cultural Services</h3>
+                    <p class="text-xs text-gray-500 mt-1">康樂及文化事務署</p>
+                    <div class="mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs text-gray-600">
+                        <div class="flex justify-between"><span>Park Shortcuts Mapped:</span> <strong class="text-gray-900">41</strong></div>
+                        <div class="flex justify-between"><span>Grass Restoration / Stepping Stones:</span> <strong class="text-emerald-700">9 sites</strong></div>
+                        <div class="flex justify-between"><span>Response Rate:</span> <strong class="text-blue-600">62%</strong></div>
+                    </div>
+                </div>
+
+                <!-- HKHA -->
+                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition">
+                    <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-extrabold font-mono text-sm mb-4">
+                        HKHA
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-lg">Housing Authority</h3>
+                    <p class="text-xs text-gray-500 mt-1">香港房屋委員會</p>
+                    <div class="mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs text-gray-600">
+                        <div class="flex justify-between"><span>Estate Slope Trails:</span> <strong class="text-gray-900">32</strong></div>
+                        <div class="flex justify-between"><span>Tactical Handrails Added:</span> <strong class="text-emerald-700">5 sites</strong></div>
+                        <div class="flex justify-between"><span>Response Rate:</span> <strong class="text-blue-600">58%</strong></div>
+                    </div>
+                </div>
+
+                <!-- PlanD -->
+                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition">
+                    <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-extrabold font-mono text-sm mb-4">
+                        PlanD
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-lg">Planning Department</h3>
+                    <p class="text-xs text-gray-500 mt-1">規劃署</p>
+                    <div class="mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs text-gray-600">
+                        <div class="flex justify-between"><span>Macro Walkability Submissions:</span> <strong class="text-gray-900">15</strong></div>
+                        <div class="flex justify-between"><span>Master Plan Integration:</span> <strong class="text-emerald-700">2 zones</strong></div>
+                        <div class="flex justify-between"><span>Response Rate:</span> <strong class="text-blue-600">80%</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TACTICAL URBANISM ADVOCACY STATEMENT -->
+            <div class="mt-12 bg-brand-50 border border-brand-200 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="space-y-2 max-w-2xl">
+                    <h4 class="font-extrabold text-brand-900 text-lg">Are you a district officer, engineer, or urban planner?</h4>
+                    <p class="text-sm text-brand-800 leading-relaxed">
+                        Access our complete spatial GIS datasets for Hong Kong districts. We offer customized walkability reports and slope erosion assessments free of charge for official government review.
+                    </p>
+                </div>
+                <a href="mailto:gov-liaison@greentrace.hk" class="whitespace-nowrap bg-brand-800 hover:bg-brand-900 text-white text-sm font-bold px-6 py-3 rounded-xl shadow transition flex items-center gap-2">
+                    <i data-lucide="mail" class="w-4 h-4"></i> Request Official GIS Report
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- BLOG & URBAN ECOLOGY ADVOCACY -->
+    <section id="blog" class="py-16 bg-gray-50 border-t border-gray-200">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-10">
+                <div>
+                    <div class="flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-brand-700">
+                        <i data-lucide="sprout" class="w-3.5 h-3.5"></i> Knowledge Base
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mt-1">Urban Ecology & Spatial Pedestrian Research</h2>
+                </div>
+                <a href="#" class="mt-4 md:mt-0 text-sm font-bold text-brand-700 hover:text-brand-800 flex items-center gap-1">View All Research Articles <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Article 1 -->
+                <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition flex flex-col">
+                    <div class="h-48 bg-gray-200 relative overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" alt="Urban walkability shortcut" class="w-full h-full object-cover">
+                        <span class="absolute top-3 left-3 bg-brand-800/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">Soil Degradation</span>
+                    </div>
+                    <div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                            <span class="text-xs text-gray-400 font-mono">October 24, 2026</span>
+                            <h3 class="font-bold text-gray-900 text-lg mt-1 hover:text-brand-700 transition cursor-pointer">
+                                The Science of Soil Compaction: How 1,000 Footsteps Kill Native Grass on HK Slopes
+                            </h3>
+                            <p class="text-xs text-gray-600 mt-2 line-clamp-3">
+                                When pedestrians bypass detour footbridges, repeated foot traffic removes vegetation cover, leading to mudslides during rainstorms. We examine eco-friendly step installation solutions.
+                            </p>
+                        </div>
+                        <a href="#" class="text-xs font-bold text-brand-700 hover:underline inline-flex items-center gap-1">Read Analysis <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></a>
+                    </div>
+                </article>
+
+                <!-- Article 2 -->
+                <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition flex flex-col">
+                    <div class="h-48 bg-gray-200 relative overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=600&q=80" alt="Hong Kong Urban Planning" class="w-full h-full object-cover">
+                        <span class="absolute top-3 left-3 bg-brand-800/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">Tactical Urbanism</span>
+                    </div>
+                    <div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                            <span class="text-xs text-gray-400 font-mono">September 15, 2026</span>
+                            <h3 class="font-bold text-gray-900 text-lg mt-1 hover:text-brand-700 transition cursor-pointer">
+                                Why Fences Fail: Designing With Human Desire Lines Instead of Against Them
+                            </h3>
+                            <p class="text-xs text-gray-600 mt-2 line-clamp-3">
+                                Why do housing estates continuously repair broken metal fences? City planners globally are replacing rigid barriers with paving stones along natural pedestrian desire routes.
+                            </p>
+                        </div>
+                        <a href="#" class="text-xs font-bold text-brand-700 hover:underline inline-flex items-center gap-1">Read Analysis <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></a>
+                    </div>
+                </article>
+
+                <!-- Article 3 -->
+                <article class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition flex flex-col">
+                    <div class="h-48 bg-gray-200 relative overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80" alt="HK Pedestrian Walkway" class="w-full h-full object-cover">
+                        <span class="absolute top-3 left-3 bg-brand-800/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">Policy Spotlight</span>
+                    </div>
+                    <div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                            <span class="text-xs text-gray-400 font-mono">August 28, 2026</span>
+                            <h3 class="font-bold text-gray-900 text-lg mt-1 hover:text-brand-700 transition cursor-pointer">
+                                Case Study: Kwun Tong Estate Shortcut Formalization Project
+                            </h3>
+                            <p class="text-xs text-gray-600 mt-2 line-clamp-3">
+                                How 600 citizen reports prompted the Housing Department to replace an unsafe mud slope with 24 eco-permeable concrete steps and solar night lighting.
+                            </p>
+                        </div>
+                        <a href="#" class="text-xs font-bold text-brand-700 hover:underline inline-flex items-center gap-1">Read Analysis <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></a>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-brand-900 text-white pt-12 pb-8 border-t border-brand-800">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-brand-800">
+                <div class="space-y-3 md:col-span-1">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-lg bg-brand-700 flex items-center justify-center text-white">
+                            <i data-lucide="footprints" class="w-5 h-5"></i>
+                        </div>
+                        <span class="font-extrabold text-lg tracking-tight text-white">Green Trace HK</span>
+                    </div>
+                    <p class="text-xs text-brand-200 leading-relaxed">
+                        Green Trace HK (綠跡香港) is a citizen-led tactical urbanism initiative promoting pedestrian safety, urban walkability, and slope soil conservation across Hong Kong.
+                    </p>
+                    <div class="text-[11px] text-brand-300 font-mono">
+                        Target domain: <strong>greentrace.hk</strong>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-brand-300 mb-3">Quick Links</h4>
+                    <ul class="space-y-2 text-xs text-brand-100">
+                        <li><a href="#about" class="hover:text-white transition">About Green Trace</a></li>
+                        <li><a href="#map-section" class="hover:text-white transition">Desire Path Map</a></li>
+                        <li><a href="#stakeholders" class="hover:text-white transition">Government Action Hub</a></li>
+                        <li><a href="#blog" class="hover:text-white transition">Ecology Articles</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-brand-300 mb-3">Government Partners</h4>
+                    <ul class="space-y-2 text-xs text-brand-100">
+                        <li><a href="#" class="hover:text-white transition">Highways Department (HyD)</a></li>
+                        <li><a href="#" class="hover:text-white transition">Leisure & Cultural Services (LCSD)</a></li>
+                        <li><a href="#" class="hover:text-white transition">Housing Authority (HKHA)</a></li>
+                        <li><a href="#" class="hover:text-white transition">Civil Engineering & Dev (CEDD)</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-brand-300 mb-3">Contact & Support</h4>
+                    <p class="text-xs text-brand-200 mb-3">Have a shortcut safety concern in your district?</p>
+                    <button onclick="openReportModal()" class="w-full bg-brand-700 hover:bg-brand-600 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Submit Citizen Report
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-brand-300 gap-4">
+                <p>&copy; 2026 Green Trace HK ( Go Green Hong Kong Initiative ). All rights reserved.</p>
+                <div class="flex items-center space-x-6">
+                    <a href="#" class="hover:text-white">Privacy Policy</a>
+                    <a href="#" class="hover:text-white">Open GIS Data License</a>
+                    <a href="#" class="hover:text-white">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- REPORT DESIRE PATH MODAL -->
+    <div id="reportModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 p-6 relative">
+            <!-- Close Button -->
+            <button onclick="closeReportModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="flex items-center gap-2.5 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-brand-100 text-brand-800 flex items-center justify-center">
+                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-extrabold text-gray-900 text-lg">Report an Informal Shortcut</h3>
+                    <p class="text-xs text-gray-500">協助報告社區捷徑與泥路安全問題</p>
+                </div>
+            </div>
+
+            <form id="pathReportForm" onsubmit="handleFormSubmit(event)" class="mt-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Shortcut / Location Name *</label>
+                    <input type="text" required placeholder="e.g., Shatin Estate Slope Dirt Trail near MTR Exit B" class="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">District *</label>
+                        <select required class="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                            <option value="">Select District</option>
+                            <option value="Shatin">Sha Tin (沙田)</option>
+                            <option value="Kwun Tong">Kwun Tong (觀塘)</option>
+                            <option value="Central & Western">Central & Western (中西區)</option>
+                            <option value="Tuen Mun">Tuen Mun (屯門)</option>
+                            <option value="Eastern">Eastern (東區)</option>
+                            <option value="Other">Other HK District</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Likely Responsible Dept</label>
+                        <select class="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                            <option value="HyD">Highways Dept (HyD)</option>
+                            <option value="LCSD">Leisure & Cultural Services (LCSD)</option>
+                            <option value="HKHA">Housing Authority (HKHA)</option>
+                            <option value="PlanD">Planning Dept (PlanD)</option>
+                            <option value="Unknown">Not Sure / Needs Investigation</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Latitude (Lat)</label>
+                        <input type="text" id="formLat" placeholder="22.3812" class="w-full text-xs p-2.5 border border-gray-300 rounded-lg font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Longitude (Lng)</label>
+                        <input type="text" id="formLng" placeholder="114.1884" class="w-full text-xs p-2.5 border border-gray-300 rounded-lg font-mono">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Path Hazard / Risk Assessment</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center space-x-1.5 border border-gray-200 p-2 rounded-lg text-[11px] text-gray-700 cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" class="rounded text-brand-600 focus:ring-brand-500">
+                            <span>Soil Erosion</span>
+                        </label>
+                        <label class="flex items-center space-x-1.5 border border-gray-200 p-2 rounded-lg text-[11px] text-gray-700 cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" class="rounded text-brand-600 focus:ring-brand-500">
+                            <span>Steep Slip Danger</span>
+                        </label>
+                        <label class="flex items-center space-x-1.5 border border-gray-200 p-2 rounded-lg text-[11px] text-gray-700 cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" class="rounded text-brand-600 focus:ring-brand-500">
+                            <span>Broken Fence</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Proposed Civic Solution *</label>
+                    <textarea rows="3" required placeholder="What should be done? (e.g. Construct 10 eco concrete steps, install wooden handrails, or plant low shrubs to redirect pedestrian traffic safely...)" class="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Upload Photo Proof (Optional)</label>
+                    <input type="file" accept="image/*" class="w-full text-xs text-gray-500 border border-gray-200 rounded-lg p-2 cursor-pointer bg-gray-50">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-brand-800 hover:bg-brand-900 text-white text-xs font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="send" class="w-4 h-4"></i> Submit Citizen Report to Map
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION MESSAGING TOAST -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-brand-900 text-white px-5 py-3 rounded-xl shadow-2xl z-[2000] hidden flex items-center gap-3 border border-brand-700">
+        <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+        <span id="toastMsg" class="text-xs font-medium">Report submitted successfully!</span>
+    </div>
+
+    <!-- APPLICATION JAVASCRIPT LOGIC -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // SAMPLE DESIRE PATH MAP DATA FOR HONG KONG
+        const desirePathsData = [
+            {
+                id: 1,
+                title: "Shatin Wai Slope Trampled Track",
+                district: "Sha Tin",
+                lat: 22.3789,
+                lng: 114.1952,
+                status: "CRITICAL",
+                dept: "HyD",
+                deptFull: "Highways Department",
+                risk: "Severe Mud Slide & Pedestrian Slip Hazard",
+                solution: "Build 18 permeable concrete steps with safety handrail",
+                image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=400&q=80",
+                description: "Over 400 commuters cut across this steep grass slope daily between MTR Exit B and Sha Tin Wai Estate, destroying turf."
+            },
+            {
+                id: 2,
+                title: "Kwun Tong Estate Park Fence Shortcut",
+                district: "Kwun Tong",
+                lat: 22.3164,
+                lng: 114.2251,
+                status: "REVIEW",
+                dept: "HKHA",
+                deptFull: "Housing Authority",
+                risk: "Broken Barrier & Grass Destruction",
+                solution: "Formalize paved pathway and install low shrub hedging",
+                image: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=400&q=80",
+                description: "Citizens cut through a gap in the railing to save 3 minutes walking to bus terminus. Trampled dirt path turns to mud in rain."
+            },
+            {
+                id: 3,
+                title: "Mid-Levels Pokfulam Road Slope Steps",
+                district: "Central & Western",
+                lat: 22.2815,
+                lng: 114.1378,
+                status: "RESOLVED",
+                dept: "LCSD",
+                deptFull: "Leisure & Cultural Services",
+                risk: "Historical Erosion (Paved in Sept 2026)",
+                solution: "LCSD installed eco-stepping stones & native groundcover",
+                image: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=400&q=80",
+                description: "Formerly a dirt track. Successfully paved following 120 citizen petitions via Green Trace platform."
+            }
+        ];
+
+        let map;
+        let markers = [];
+
+        // INITIALIZE LEAFLET MAP
+        function initMap() {
+            // Centered on Hong Kong
+            map = L.map('map', {
+                center: [22.3193, 114.1694],
+                zoom: 12,
+                zoomControl: true
+            });
+
+            // Esri World Topographic Map (Reliable Tile Server - No 403 / CORS Sandbox Blocks)
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, &copy; OpenStreetMap contributors | Green Trace HK',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Force recalculation of container size after load to prevent rendering glitches
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 300);
+
+            renderMarkers(desirePathsData);
+            renderSidebarList(desirePathsData);
+        }
+
+        // CUSTOM COLOR PIN SVG CREATOR
+        function createCustomPin(status) {
+            let color = "#e9c46a"; // default amber
+            if (status === "CRITICAL") color = "#ef4444"; // red
+            if (status === "RESOLVED") color = "#10b981"; // green
+
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32" height="32" stroke="#ffffff" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
+            
+            return L.divIcon({
+                html: svg,
+                className: '',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+        }
+
+        // RENDER MAP MARKERS
+        function renderMarkers(data) {
+            // Clear existing markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            data.forEach(item => {
+                const marker = L.marker([item.lat, item.lng], {
+                    icon: createCustomPin(item.status)
+                }).addTo(map);
+
+                // Popup Content Styling
+                const statusBadge = item.status === 'CRITICAL' 
+                    ? '<span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded">🔴 High Risk</span>'
+                    : item.status === 'REVIEW'
+                    ? '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">🟡 Under Review</span>'
+                    : '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">🟢 Formalized</span>';
+
+                const popupHtml = `
+                    <div class="font-sans">
+                        <img src="${item.image}" class="w-full h-28 object-cover">
+                        <div class="p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                ${statusBadge}
+                                <span class="text-[10px] font-mono font-bold text-gray-500">${item.dept}</span>
+                            </div>
+                            <h4 class="font-bold text-gray-900 text-sm leading-tight">${item.title}</h4>
+                            <p class="text-[11px] text-gray-600">${item.description}</p>
+                            <div class="bg-gray-50 p-2 rounded border border-gray-200 text-[10px] space-y-1">
+                                <div><strong class="text-gray-700">Risk:</strong> ${item.risk}</div>
+                                <div><strong class="text-brand-800">Proposed Action:</strong> ${item.solution}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupHtml);
+                markers.push(marker);
+            });
+
+            document.getElementById('visibleCount').innerText = `${data.length} Records`;
+        }
+
+        // RENDER SIDEBAR LIST ITEMS
+        function renderSidebarList(data) {
+            const container = document.getElementById('pathList');
+            container.innerHTML = '';
+
+            if(data.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-500 text-center py-8">No desire paths match current filters.</div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:border-brand-500 transition cursor-pointer text-xs space-y-1.5";
+                
+                const dotColor = item.status === 'CRITICAL' ? 'bg-red-500' : item.status === 'REVIEW' ? 'bg-amber-400' : 'bg-emerald-500';
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-gray-800 truncate">${item.district}</span>
+                        <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full ${dotColor}"></span> ${item.dept}</span>
+                    </div>
+                    <div class="font-semibold text-gray-900 line-clamp-1">${item.title}</div>
+                    <div class="text-[10px] text-gray-500 line-clamp-1">${item.solution}</div>
+                `;
+
+                card.addEventListener('click', () => {
+                    map.flyTo([item.lat, item.lng], 15);
+                    const marker = markers.find(m => m.getLatLng().lat === item.lat && m.getLatLng().lng === item.lng);
+                    if(marker) marker.openPopup();
+                });
+
+                container.appendChild(card);
+            });
+        }
+
+        // FILTER LOGIC
+        function filterMapMarkers() {
+            const statusVal = document.getElementById('statusFilter').value;
+            const deptVal = document.getElementById('deptFilter').value;
+
+            const filtered = desirePathsData.filter(item => {
+                const matchesStatus = (statusVal === 'ALL' || item.status === statusVal);
+                const matchesDept = (deptVal === 'ALL' || item.dept === deptVal);
+                return matchesStatus && matchesDept;
+            });
+
+            renderMarkers(filtered);
+            renderSidebarList(filtered);
+        }
+
+        function resetMapFilters() {
+            document.getElementById('statusFilter').value = 'ALL';
+            document.getElementById('deptFilter').value = 'ALL';
+            filterMapMarkers();
+        }
+
+        // MODAL TOGGLES
+        function openReportModal() {
+            document.getElementById('reportModal').classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+        }
+
+        // HANDLE FORM SUBMISSION
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            // Create new record dynamically
+            const newRecord = {
+                id: desirePathsData.length + 1,
+                title: e.target[0].value,
+                district: e.target[1].value,
+                dept: e.target[2].value,
+                lat: parseFloat(document.getElementById('formLat').value) || 22.3193,
+                lng: parseFloat(document.getElementById('formLng').value) || 114.1694,
+                status: "REVIEW",
+                deptFull: "Pending Verification",
+                risk: "Citizen Reported Shortcut",
+                solution: e.target[6].value,
+                image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=400&q=80",
+                description: e.target[6].value
+            };
+
+            desirePathsData.unshift(newRecord);
+            filterMapMarkers();
+
+            // Close modal & Toast notification
+            closeReportModal();
+            showToast("Report added to public map review database!");
+            e.target.reset();
+
+            // Fly to new marker
+            map.flyTo([newRecord.lat, newRecord.lng], 14);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
+
+        // Initialize Map on Load
+        window.onload = function() {
+            initMap();
+        };
+    </script>
+</body>
+</html>
